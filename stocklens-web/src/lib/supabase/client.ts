@@ -1,12 +1,11 @@
 import { createBrowserClient } from '@supabase/ssr';
-import type { Database } from '@/types/database';
 
 // HARDCODED credentials - bypass env var issues completely
 const SUPABASE_URL = 'https://famxbhnsogvfeoxmqhmu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhbXhiaG5zb2d2ZmVveG1xaG11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1NTY1MTgsImV4cCI6MjA4MzEzMjUxOH0.xu41qUk6ApxAuMr6e_y77fyYTNtDYq0oH6fIklWaIng';
 
 // Singleton client instance
-let browserClient: ReturnType<typeof createBrowserClient<Database>> | null = null;
+let browserClient: any = null;
 
 /**
  * Create a Supabase client for use in the browser (Client Components)
@@ -14,7 +13,8 @@ let browserClient: ReturnType<typeof createBrowserClient<Database>> | null = nul
  */
 export function createClient() {
   if (!browserClient) {
-    browserClient = createBrowserClient<Database>(
+    console.log('[Supabase] Creating new browser client');
+    browserClient = createBrowserClient(
       SUPABASE_URL,
       SUPABASE_ANON_KEY
     );
