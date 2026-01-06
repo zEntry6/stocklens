@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Star, Plus, Trash2, TrendingUp, TrendingDown, Lock, Loader2, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+
+const SUPABASE_URL = 'https://famxbhnsogvfeoxmqhmu.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhbXhiaG5zb2d2ZmVveG1xaG11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1NTY1MTgsImV4cCI6MjA4MzEzMjUxOH0.xu41qUk6ApxAuMr6e_y77fyYTNtDYq0oH6fIklWaIng';
 
 interface Signal {
   symbol: string;
@@ -29,49 +32,35 @@ export default function WatchlistPage() {
   const [watchlist, setWatchlist] = useState<string[]>(["XAUUSD", "TSLA", "AAPL"]); // Default watchlist
   const [refreshing, setRefreshing] = useState(false);
 
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = createClient();
 
   const fetchSignals = useCallback(async () => {
     try {
-      console.log("[Watchlist] Fetching signals for:", watchlist);
-      const { data, error } = await supabase
-        .from("signals_cache")
-        .select("symbol, current_price, price_change_pct, signal_direction, hybrid_verdict")
-        .in("symbol", watchlist);
-
-      console.log("[Watchlist] Fetch result:", { data: data?.length, error });
-      if (error) throw error;
+      const symbols = watchlist.map(s => `"${s}"`).join(',');
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/signals_cache?select=symbol,current_price,price_change_pct,signal_direction,hybrid_verdict&symbol=in.(${symbols})`,
+        {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+          },
+        }
+      );
+      const data = await response.json();
       setSignals(data || []);
     } catch (err) {
       console.error("[Watchlist] Fetch error:", err);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase]);
+  }, [watchlist]);
 
   useEffect(() => {
     async function checkAuth() {
-      console.log("[Watchlist] Checking auth...");
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log("[Watchlist] Session:", session ? "exists" : "null");
-      if (session?.user) {
-        setUser(session.user);
-      } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
-      }
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
       setLoading(false);
     }
     checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event: any, session: any) => {
-        setUser(session?.user ?? null);
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     if (user) {
