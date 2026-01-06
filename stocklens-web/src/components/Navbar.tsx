@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Activity, Crown, LogIn, User, Menu, X } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
@@ -14,26 +14,37 @@ export default function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const supabase = createBrowserClient(
+  const supabase = useMemo(() => createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  ), []);
 
   useEffect(() => {
+    let mounted = true;
+
     // Get current session
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-
-      if (user) {
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("is_premium, email")
-          .eq("id", user.id)
-          .single();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!mounted) return;
         
-        setProfile(profileData);
+        setUser(user);
+
+        if (user) {
+          const { data: profileData } = await supabase
+            .from("profiles")
+            .select("is_premium, email")
+            .eq("id", user.id)
+            .single();
+          
+          if (mounted) setProfile(profileData);
+        }
+      } catch (e) {
+        console.error("Auth error:", e);
+      } finally {
+        if (mounted) setIsLoading(false);
       }
     };
 
@@ -42,6 +53,8 @@ export default function Navbar() {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
+        
         setUser(session?.user ?? null);
         if (session?.user) {
           const { data: profileData } = await supabase
@@ -49,14 +62,18 @@ export default function Navbar() {
             .select("is_premium, email")
             .eq("id", session.user.id)
             .single();
-          setProfile(profileData);
+          if (mounted) setProfile(profileData);
         } else {
           setProfile(null);
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLogin = () => {
