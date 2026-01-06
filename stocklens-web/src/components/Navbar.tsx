@@ -49,7 +49,7 @@ export default function Navbar() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event: any, session: any) => {
         if (!mounted) return;
         
         setUser(session?.user ?? null);
