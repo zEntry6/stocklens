@@ -141,7 +141,7 @@ export default function StockDetailPage() {
               .from("profiles")
               .select("is_premium")
               .eq("id", session.user.id)
-              .single();
+              .single() as { data: { is_premium: boolean } | null; error: any };
             
             console.log("Profile query result:", profile, profileError);
             setIsPremium(profile?.is_premium ?? false);

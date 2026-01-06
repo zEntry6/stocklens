@@ -68,7 +68,7 @@ function PricingContent() {
         .from("profiles")
         .select("is_premium, premium_expires_at")
         .eq("id", session.user.id)
-        .single();
+        .single() as { data: { is_premium: boolean; premium_expires_at: string | null } | null };
 
       setIsPremium(profile?.is_premium || false);
       setPremiumExpires(profile?.premium_expires_at || null);

@@ -34,7 +34,7 @@ export default function Navbar() {
             .from("profiles")
             .select("is_premium, email")
             .eq("id", user.id)
-            .single();
+            .single() as { data: { is_premium: boolean; email: string } | null };
           
           if (mounted) setProfile(profileData);
         }
@@ -58,7 +58,7 @@ export default function Navbar() {
             .from("profiles")
             .select("is_premium, email")
             .eq("id", session.user.id)
-            .single();
+            .single() as { data: { is_premium: boolean; email: string } | null };
           if (mounted) setProfile(profileData);
         } else {
           setProfile(null);
