@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { Loader2, TrendingUp, TrendingDown, ArrowUpDown, Clock, RefreshCw } from "lucide-react";
+
+// Direct fetch without supabase client
+const SUPABASE_URL = 'https://famxbhnsogvfeoxmqhmu.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhbXhiaG5zb2d2ZmVveG1xaG11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1NTY1MTgsImV4cCI6MjA4MzEzMjUxOH0.xu41qUk6ApxAuMr6e_y77fyYTNtDYq0oH6fIklWaIng';
 
 interface Signal {
   id: string;
@@ -47,25 +50,31 @@ export default function StockTable({ filter = "All" }: StockTableProps) {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [countdown, setCountdown] = useState(AUTO_REFRESH_INTERVAL / 1000);
 
-  // Create supabase client once using singleton
-  const supabase = useMemo(() => createClient(), []);
-
-  // Fast fetch from database only (no API calls)
+  // Direct fetch using REST API - no supabase client needed
   const fetchSignals = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
       
-      console.log('[StockTable] Fetching signals...');
+      console.log('[StockTable] Fetching via REST API...');
       
-      const { data, error: fetchError } = await supabase
-        .from("signals_cache")
-        .select("id, symbol, timeframe, current_price, price_change_pct, rsi_14, signal_direction, entry_price, hybrid_verdict, confidence_level, last_updated_at")
-        .order("last_updated_at", { ascending: false });
-
-      console.log('[StockTable] Fetch result:', { data: data?.length, error: fetchError });
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/signals_cache?select=id,symbol,timeframe,current_price,price_change_pct,rsi_14,signal_direction,entry_price,hybrid_verdict,confidence_level,last_updated_at&order=last_updated_at.desc`,
+        {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+          },
+        }
+      );
       
-      if (fetchError) throw fetchError;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('[StockTable] Fetch result:', data?.length, 'signals');
+      
       setSignals(data || []);
       setLastUpdate(new Date());
       setCountdown(AUTO_REFRESH_INTERVAL / 1000);
@@ -77,7 +86,7 @@ export default function StockTable({ filter = "All" }: StockTableProps) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [supabase]);
+  }, []);
 
   // Background price update (only on manual refresh)
   const updatePrices = useCallback(async () => {
