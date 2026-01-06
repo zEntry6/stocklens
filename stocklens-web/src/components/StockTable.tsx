@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient } from "@/lib/supabase/client";
 import { Loader2, TrendingUp, TrendingDown, ArrowUpDown, Clock, RefreshCw } from "lucide-react";
 
 interface Signal {
@@ -47,11 +47,8 @@ export default function StockTable({ filter = "All" }: StockTableProps) {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [countdown, setCountdown] = useState(AUTO_REFRESH_INTERVAL / 1000);
 
-  // Create supabase client once using useMemo
-  const supabase = useMemo(() => createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  ), []);
+  // Create supabase client once using singleton
+  const supabase = useMemo(() => createClient(), []);
 
   // Fast fetch from database only (no API calls)
   const fetchSignals = useCallback(async (isRefresh = false) => {
