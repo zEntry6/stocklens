@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Eye, EyeOff, Mail, Lock, Loader2, TrendingUp } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/';
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -34,9 +36,6 @@ export default function LoginPage() {
       console.log("Login successful, session:", session ? "exists" : "null");
 
       if (session) {
-        // Save email to localStorage for fast profile access
-        localStorage.setItem('user_email', session.user.email || '');
-        
         // Create/update profile record
         try {
           await supabase
@@ -50,8 +49,8 @@ export default function LoginPage() {
           console.warn("Profile upsert warning:", profileError);
         }
 
-        // Force a full page reload to ensure cookies are set
-        window.location.href = "/";
+        // Full page reload to ensure cookies are properly set
+        window.location.href = redirectTo;
       } else {
         throw new Error("Session not created. Please try again.");
       }
