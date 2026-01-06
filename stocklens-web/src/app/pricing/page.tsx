@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
@@ -25,7 +25,7 @@ const PREMIUM_FEATURES = [
   "No ads",
 ];
 
-export default function PricingPage() {
+function PricingContent() {
   const searchParams = useSearchParams();
   const [isAnnual, setIsAnnual] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -502,5 +502,17 @@ export default function PricingPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-accent-primary" />
+      </div>
+    }>
+      <PricingContent />
+    </Suspense>
   );
 }
