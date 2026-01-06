@@ -1,0 +1,11 @@
+{
+  "name": "stocklens-engine",
+  "version": "1.0.0",
+  "build": {
+    "builder": "nixpacks"
+  },
+  "deploy": {
+    "startCommand": "python main.py --mode scheduler",
+    "restartPolicyType": "on-failure"
+  }
+}

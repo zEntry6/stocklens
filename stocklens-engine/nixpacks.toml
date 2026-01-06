@@ -1,0 +1,13 @@
+[project]
+name = "stocklens-engine"
+
+[build]
+builder = "nixpacks"
+
+[build.buildpacks]
+python = "3.11"
+
+[deploy]
+startCommand = "python main.py --mode scheduler"
+restartPolicyType = "on-failure"
+restartPolicyMaxRetries = 5
