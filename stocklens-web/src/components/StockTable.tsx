@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 import { Loader2, TrendingUp, TrendingDown, ArrowUpDown, Clock, RefreshCw } from "lucide-react";
@@ -47,25 +47,28 @@ export default function StockTable({ filter = "All" }: StockTableProps) {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [countdown, setCountdown] = useState(AUTO_REFRESH_INTERVAL / 1000);
 
-  const supabase = createBrowserClient(
+  // Create supabase client once using useMemo
+  const supabase = useMemo(() => createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  ), []);
 
   // Fast fetch from database only (no API calls)
   const fetchSignals = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
+      else setLoading(true);
       
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from("signals_cache")
         .select("id, symbol, timeframe, current_price, price_change_pct, rsi_14, signal_direction, entry_price, hybrid_verdict, confidence_level, last_updated_at")
         .order("last_updated_at", { ascending: false });
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
       setSignals(data || []);
       setLastUpdate(new Date());
       setCountdown(AUTO_REFRESH_INTERVAL / 1000);
+      setError(null);
     } catch (err: any) {
       console.error("Fetch error:", err);
       setError(err?.message || "Failed to load data");
@@ -75,20 +78,24 @@ export default function StockTable({ filter = "All" }: StockTableProps) {
     }
   }, [supabase]);
 
-  // Background price update (only on manual refresh or every 5 minutes)
+  // Background price update (only on manual refresh)
   const updatePrices = useCallback(async () => {
     try {
+      setRefreshing(true);
       await fetch("/api/update-prices", { method: "POST" });
-      fetchSignals(true);
+      await fetchSignals(true);
     } catch (e) {
       console.warn("Price update failed");
+    } finally {
+      setRefreshing(false);
     }
   }, [fetchSignals]);
 
-  // Initial fetch (fast, database only)
+  // Initial fetch only once
   useEffect(() => {
     fetchSignals();
-  }, [fetchSignals]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-refresh from database every 60 seconds
   useEffect(() => {
@@ -97,16 +104,8 @@ export default function StockTable({ filter = "All" }: StockTableProps) {
     }, AUTO_REFRESH_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [fetchSignals]);
-
-  // Background price update every 5 minutes
-  useEffect(() => {
-    const priceInterval = setInterval(() => {
-      updatePrices();
-    }, 5 * 60 * 1000); // 5 minutes
-
-    return () => clearInterval(priceInterval);
-  }, [updatePrices]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Countdown timer
   useEffect(() => {
