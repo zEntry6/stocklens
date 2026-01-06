@@ -79,9 +79,15 @@ export default function Navbar() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setProfile(null);
+      // Force page reload to clear all state
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
