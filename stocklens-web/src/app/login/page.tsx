@@ -34,7 +34,10 @@ export default function LoginPage() {
       console.log("Login successful, session:", session ? "exists" : "null");
 
       if (session) {
-        // Create/update profile record - use rpc or skip if types don't match
+        // Save email to localStorage for fast profile access
+        localStorage.setItem('user_email', session.user.email || '');
+        
+        // Create/update profile record
         try {
           await supabase
             .from("profiles")

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Star, Plus, Trash2, TrendingUp, TrendingDown, Lock, Loader2, RefreshCw } from "lucide-react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 
 const SUPABASE_URL = 'https://famxbhnsogvfeoxmqhmu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhbXhiaG5zb2d2ZmVveG1xaG11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1NTY1MTgsImV4cCI6MjA4MzEzMjUxOH0.xu41qUk6ApxAuMr6e_y77fyYTNtDYq0oH6fIklWaIng';
@@ -26,13 +25,11 @@ const ASSET_NAMES: Record<string, string> = {
 };
 
 export default function WatchlistPage() {
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(true); // Assume logged in
+  const [loading, setLoading] = useState(false); // No loading - show immediately
   const [signals, setSignals] = useState<Signal[]>([]);
-  const [watchlist, setWatchlist] = useState<string[]>(["XAUUSD", "TSLA", "AAPL"]); // Default watchlist
+  const [watchlist, setWatchlist] = useState<string[]>(["XAUUSD", "TSLA", "AAPL"]);
   const [refreshing, setRefreshing] = useState(false);
-
-  const supabase = createClient();
 
   const fetchSignals = useCallback(async () => {
     try {
@@ -53,15 +50,9 @@ export default function WatchlistPage() {
     }
   }, [watchlist]);
 
-  // Load immediately without waiting for auth
   useEffect(() => {
     fetchSignals();
-    // Check auth in background
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-    });
-    setLoading(false);
-  }, [fetchSignals, supabase]);
+  }, [fetchSignals]);
 
   const handleRefresh = async () => {
     setRefreshing(true);

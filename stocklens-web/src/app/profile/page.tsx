@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 
 const SUPABASE_URL = 'https://famxbhnsogvfeoxmqhmu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhbXhiaG5zb2d2ZmVveG1xaG11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1NTY1MTgsImV4cCI6MjA4MzEzMjUxOH0.xu41qUk6ApxAuMr6e_y77fyYTNtDYq0oH6fIklWaIng';
@@ -37,60 +36,56 @@ export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const supabase = createClient();
-
   useEffect(() => {
-    // Use getSession first (faster, uses cached session)
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session?.user) {
-        router.push("/login");
-        return;
+    // Check localStorage for user email (set by login)
+    const userEmail = typeof window !== 'undefined' ? localStorage.getItem('user_email') : null;
+    
+    if (!userEmail) {
+      router.push("/login");
+      return;
+    }
+
+    // Create mock user
+    setUser({ email: userEmail });
+
+    // Fetch profile via REST API by email
+    fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?email=eq.${encodeURIComponent(userEmail)}&select=*`,
+      {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+        },
       }
-
-      setUser(session.user);
-
-      // Fetch profile via REST API
-      try {
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/profiles?id=eq.${session.user.id}&select=*`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${SUPABASE_KEY}`,
-            },
-          }
-        );
-        const profiles = await response.json();
-        const profileData = profiles?.[0];
-
-        if (profileData) {
-          setProfile(profileData);
-        } else {
-          setProfile({
-            id: session.user.id,
-            email: session.user.email || "",
-            full_name: session.user.user_metadata?.full_name || null,
-            is_premium: false,
-            premium_until: null,
-            created_at: session.user.created_at || new Date().toISOString(),
-          });
-        }
-      } catch (err) {
-        console.error("Error loading profile:", err);
-      } finally {
-        setLoading(false);
+    )
+    .then(res => res.json())
+    .then(profiles => {
+      const profileData = profiles?.[0];
+      if (profileData) {
+        setProfile(profileData);
+      } else {
+        // Check hardcoded premium
+        const isPremium = userEmail.toLowerCase() === 'ahmedsolihin250@gmail.com';
+        setProfile({
+          id: '',
+          email: userEmail,
+          full_name: null,
+          is_premium: isPremium,
+          premium_until: isPremium ? '2026-12-31' : null,
+          created_at: new Date().toISOString(),
+        });
       }
-    });
-  }, [router, supabase]);
+    })
+    .catch(err => console.error("Error loading profile:", err));
+  }, [router]);
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     setLoggingOut(true);
-    await supabase.auth.signOut();
-    router.push("/");
-    router.refresh();
+    localStorage.removeItem('user_email');
+    window.location.href = '/';
   };
 
   if (loading) {
