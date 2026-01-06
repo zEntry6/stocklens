@@ -56,18 +56,22 @@ export default function StockTable({ filter = "All" }: StockTableProps) {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
       
+      console.log('[StockTable] Fetching signals...');
+      
       const { data, error: fetchError } = await supabase
         .from("signals_cache")
         .select("id, symbol, timeframe, current_price, price_change_pct, rsi_14, signal_direction, entry_price, hybrid_verdict, confidence_level, last_updated_at")
         .order("last_updated_at", { ascending: false });
 
+      console.log('[StockTable] Fetch result:', { data: data?.length, error: fetchError });
+      
       if (fetchError) throw fetchError;
       setSignals(data || []);
       setLastUpdate(new Date());
       setCountdown(AUTO_REFRESH_INTERVAL / 1000);
       setError(null);
     } catch (err: any) {
-      console.error("Fetch error:", err);
+      console.error("[StockTable] Fetch error:", err);
       setError(err?.message || "Failed to load data");
     } finally {
       setLoading(false);
