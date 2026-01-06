@@ -43,20 +43,19 @@ export default function ProfilePage() {
   const supabase = createClient();
 
   useEffect(() => {
-    async function loadProfile() {
+    // Use getSession first (faster, uses cached session)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session?.user) {
+        router.push("/login");
+        return;
+      }
+
+      setUser(session.user);
+
+      // Fetch profile via REST API
       try {
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
-        if (userError || !user) {
-          router.push("/login");
-          return;
-        }
-
-        setUser(user);
-
-        // Try to get profile via REST API
         const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&select=*`,
+          `${SUPABASE_URL}/rest/v1/profiles?id=eq.${session.user.id}&select=*`,
           {
             headers: {
               'apikey': SUPABASE_KEY,
@@ -70,14 +69,13 @@ export default function ProfilePage() {
         if (profileData) {
           setProfile(profileData);
         } else {
-          // Create default profile object from auth user
           setProfile({
-            id: user.id,
-            email: user.email || "",
-            full_name: user.user_metadata?.full_name || null,
+            id: session.user.id,
+            email: session.user.email || "",
+            full_name: session.user.user_metadata?.full_name || null,
             is_premium: false,
             premium_until: null,
-            created_at: user.created_at,
+            created_at: session.user.created_at || new Date().toISOString(),
           });
         }
       } catch (err) {
@@ -85,10 +83,8 @@ export default function ProfilePage() {
       } finally {
         setLoading(false);
       }
-    }
-
-    loadProfile();
-  }, [router]);
+    });
+  }, [router, supabase]);
 
   const handleLogout = async () => {
     setLoggingOut(true);

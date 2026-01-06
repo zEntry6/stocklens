@@ -53,21 +53,15 @@ export default function WatchlistPage() {
     }
   }, [watchlist]);
 
+  // Load immediately without waiting for auth
   useEffect(() => {
-    async function checkAuth() {
-      const { data: { user } } = await supabase.auth.getUser();
+    fetchSignals();
+    // Check auth in background
+    supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
-      setLoading(false);
-    }
-    checkAuth();
-  }, [supabase]);
-
-  useEffect(() => {
-    if (user) {
-      fetchSignals();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+    });
+    setLoading(false);
+  }, [fetchSignals, supabase]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
