@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Star, Plus, Trash2, TrendingUp, TrendingDown, Lock, Loader2, RefreshCw } from "lucide-react";
 import Link from "next/link";
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient } from "@/lib/supabase/client";
 
 interface Signal {
   symbol: string;
@@ -29,10 +29,7 @@ export default function WatchlistPage() {
   const [watchlist, setWatchlist] = useState<string[]>(["XAUUSD", "TSLA", "AAPL"]); // Default watchlist
   const [refreshing, setRefreshing] = useState(false);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = useMemo(() => createClient(), []);
 
   const fetchSignals = useCallback(async () => {
     try {
