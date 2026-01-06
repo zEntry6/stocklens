@@ -26,6 +26,8 @@ export default function PriceChart({ symbol, height = 300 }: PriceChartProps) {
     if (!chartContainerRef.current) return;
 
     let isMounted = true;
+    let pollingInterval: NodeJS.Timeout;
+    let areaSeries: ISeriesApi<'Area'> | null = null;
 
     const fetchAndRenderChart = async () => {
       try {
@@ -46,7 +48,6 @@ export default function PriceChart({ symbol, height = 300 }: PriceChartProps) {
 
         // Create chart
         if (!chartContainerRef.current) return;
-        
         const chart = createChart(chartContainerRef.current, {
           layout: {
             background: { type: ColorType.Solid, color: "#1e222d" },
@@ -89,7 +90,7 @@ export default function PriceChart({ symbol, height = 300 }: PriceChartProps) {
         const topColor = isPositive ? "rgba(38, 166, 154, 0.3)" : "rgba(239, 83, 80, 0.3)";
 
         // Add area series
-        const areaSeries = chart.addAreaSeries({
+        areaSeries = chart.addAreaSeries({
           lineColor: lineColor,
           topColor: topColor,
           bottomColor: "rgba(0, 0, 0, 0)",
@@ -115,8 +116,29 @@ export default function PriceChart({ symbol, height = 300 }: PriceChartProps) {
 
         window.addEventListener("resize", handleResize);
 
+        // Poll Yahoo Finance for real-time price every 5 seconds
+        const pollYahooFinance = async () => {
+          try {
+            // Example endpoint: you may need to adjust this to your actual Yahoo Finance proxy endpoint
+            const res = await fetch(`/api/yahoo-price?symbol=${symbol}`);
+            const data = await res.json();
+            if (data && data.price) {
+              setCurrentPrice(data.price);
+              // Add new price point to chart
+              if (seriesRef.current) {
+                const now = Math.floor(Date.now() / 1000);
+                seriesRef.current.update({ time: now, value: data.price });
+              }
+            }
+          } catch (e) {
+            // Ignore polling errors
+          }
+        };
+        pollingInterval = setInterval(pollYahooFinance, 5000);
+
         return () => {
           window.removeEventListener("resize", handleResize);
+          if (pollingInterval) clearInterval(pollingInterval);
         };
       } catch (err: any) {
         if (isMounted) {
@@ -134,6 +156,7 @@ export default function PriceChart({ symbol, height = 300 }: PriceChartProps) {
         chartRef.current.remove();
         chartRef.current = null;
       }
+      if (pollingInterval) clearInterval(pollingInterval);
     };
   }, [symbol, height]);
 
@@ -162,6 +185,11 @@ export default function PriceChart({ symbol, height = 300 }: PriceChartProps) {
         </div>
       )}
       <div ref={chartContainerRef} className="w-full" />
+      {currentPrice !== null && (
+        <div className="absolute top-2 right-4 bg-background/80 px-3 py-1 rounded shadow text-lg font-mono font-bold z-20">
+          ${currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: currentPrice < 10 ? 4 : 2 })}
+        </div>
+      )}
     </div>
   );
 }

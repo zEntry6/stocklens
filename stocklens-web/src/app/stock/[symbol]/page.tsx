@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -79,6 +79,8 @@ export default function StockDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [inWatchlist, setInWatchlist] = useState(false);
+  const [livePrice, setLivePrice] = useState<number | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -92,7 +94,6 @@ export default function StockDetailPage() {
             },
           }
         );
-        
         const data = await response.json();
         if (data && data.length > 0) {
           setSignal(data[0]);
@@ -111,6 +112,25 @@ export default function StockDetailPage() {
     }
 
     if (symbol) fetchData();
+
+    // Poll Yahoo Finance for real-time price every 5 seconds
+    const pollYahooPrice = async () => {
+      try {
+        const res = await fetch(`/api/yahoo-price?symbol=${symbol}`);
+        const data = await res.json();
+        if (data && data.price) {
+          setLivePrice(data.price);
+        }
+      } catch (e) {
+        // Ignore polling errors
+      }
+    };
+    pollYahooPrice();
+    pollingRef.current = setInterval(pollYahooPrice, 5000);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
   }, [symbol]);
 
   const toggleWatchlist = () => {
@@ -165,6 +185,8 @@ export default function StockDetailPage() {
     );
   }
 
+  // Use livePrice if available, otherwise fallback to signal.current_price
+  const displayPrice = livePrice !== null ? livePrice : signal.current_price;
   const priceChange = signal.price_change_pct ?? signal.price_change_24h ?? 0;
   const priceColor = priceChange >= 0 ? "text-buy" : "text-sell";
 
@@ -193,7 +215,9 @@ export default function StockDetailPage() {
             
             <div className="text-right">
               <p className="text-3xl font-bold font-mono">
-                ${signal.current_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: signal.current_price && signal.current_price < 10 ? 4 : 2 }) ?? "N/A"}
+                {displayPrice !== null
+                  ? `$${displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: displayPrice < 10 ? 4 : 2 })}`
+                  : "N/A"}
               </p>
               <p className={`font-mono flex items-center justify-end gap-1 ${priceColor}`}>
                 {priceChange >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
