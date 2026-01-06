@@ -8,6 +8,6 @@ builder = "nixpacks"
 python = "3.11"
 
 [deploy]
-startCommand = "python main.py --mode scheduler"
+startCommand = "python main.py --mode scheduled"
 restartPolicyType = "on-failure"
 restartPolicyMaxRetries = 5
