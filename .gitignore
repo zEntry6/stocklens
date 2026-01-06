@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# Environment Variables (CRITICAL - Never commit!)
+.env
+.env.local
+.env.*.local
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+logs/
+stocklens-engine/logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets file (remove after setup)
+info.txt
+
+# Vercel
+.vercel
+
+# Testing
+coverage/
+.nyc_output/

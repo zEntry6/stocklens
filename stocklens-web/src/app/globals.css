@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* StockLens Dark Trader Theme - Global Styles */
+:root {
+  --background: #131722;
+  --card: #1e222d;
+  --card-hover: #262b38;
+  --border: #2a2e39;
+  --text-primary: #d1d4dc;
+  --text-secondary: #787b86;
+  --text-muted: #4a4e59;
+  --buy: #22c55e;
+  --sell: #ef4444;
+  --accent: #2962ff;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background-color: var(--background);
+  color: var(--text-primary);
+}
+
+body {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Monospace for numbers/prices */
+.font-mono {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Utility classes */
+@layer utilities {
+  .text-buy {
+    color: var(--buy);
+  }
+  
+  .text-sell {
+    color: var(--sell);
+  }
+  
+  .bg-buy {
+    background-color: rgba(34, 197, 94, 0.1);
+  }
+  
+  .bg-sell {
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+  
+  .card {
+    @apply bg-card rounded-lg border border-border p-4;
+  }
+  
+  .card-hover {
+    @apply hover:bg-card-hover transition-colors duration-200;
+  }
+}
+
+/* Animation for price changes */
+@keyframes flash-green {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(34, 197, 94, 0.2); }
+}
+
+@keyframes flash-red {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(239, 68, 68, 0.2); }
+}
+
+.flash-buy {
+  animation: flash-green 0.5s ease-in-out;
+}
+
+.flash-sell {
+  animation: flash-red 0.5s ease-in-out;
+}

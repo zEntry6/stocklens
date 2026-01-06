@@ -1,0 +1,36 @@
+# StockLens Engine - Python Dependencies
+# =====================================
+
+# Core
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# Supabase
+supabase>=2.0.0
+
+# Data Analysis & Technical Indicators
+pandas>=2.0.0
+numpy>=1.26.0
+
+# Scheduling
+schedule>=1.2.0
+APScheduler>=3.10.0
+
+# Sentiment Analysis
+textblob>=0.18.0
+vaderSentiment>=3.3.2
+
+# HTTP Client (async support)
+httpx>=0.27.0
+aiohttp>=3.9.0
+
+# Utilities
+python-dateutil>=2.8.0
+pytz>=2024.1
+
+# Rate limiting
+ratelimit==2.2.1
+backoff==2.2.1
+
+# Logging
+loguru==0.7.3
