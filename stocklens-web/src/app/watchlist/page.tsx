@@ -33,21 +33,26 @@ export default function WatchlistPage() {
 
   const fetchSignals = useCallback(async () => {
     try {
+      console.log("[Watchlist] Fetching signals for:", watchlist);
       const { data, error } = await supabase
         .from("signals_cache")
         .select("symbol, current_price, price_change_pct, signal_direction, hybrid_verdict")
         .in("symbol", watchlist);
 
+      console.log("[Watchlist] Fetch result:", { data: data?.length, error });
       if (error) throw error;
       setSignals(data || []);
     } catch (err) {
-      console.error("Fetch error:", err);
+      console.error("[Watchlist] Fetch error:", err);
     }
-  }, [supabase, watchlist]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase]);
 
   useEffect(() => {
     async function checkAuth() {
+      console.log("[Watchlist] Checking auth...");
       const { data: { session } } = await supabase.auth.getSession();
+      console.log("[Watchlist] Session:", session ? "exists" : "null");
       if (session?.user) {
         setUser(session.user);
       } else {
@@ -65,13 +70,15 @@ export default function WatchlistPage() {
     );
 
     return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (user) {
       fetchSignals();
     }
-  }, [user, fetchSignals]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
