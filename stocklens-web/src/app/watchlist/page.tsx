@@ -1,6 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import WatchlistClient from "./WatchlistClient";
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { Star, Plus, Trash2, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
+import Link from "next/link";
 
 const SUPABASE_URL = 'https://famxbhnsogvfeoxmqhmu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhbXhiaG5zb2d2ZmVveG1xaG11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1NTY1MTgsImV4cCI6MjA4MzEzMjUxOH0.xu41qUk6ApxAuMr6e_y77fyYTNtDYq0oH6fIklWaIng';
@@ -13,43 +15,208 @@ interface Signal {
   hybrid_verdict: string;
 }
 
-// Server Component - runs on server, fast auth check via cookies
-export default async function WatchlistPage() {
-  const supabase = createClient();
-  
-  // Server-side auth check (uses cookies, very fast)
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) {
-    redirect("/login?redirect=/watchlist");
-  }
+const ASSET_NAMES: Record<string, string> = {
+  XAUUSD: "Gold / USD",
+  EURUSD: "Euro / USD",
+  GBPUSD: "British Pound / USD",
+  TSLA: "Tesla, Inc.",
+  AAPL: "Apple Inc.",
+  NVDA: "NVIDIA Corporation",
+};
 
-  // Fetch initial data on server
-  const defaultWatchlist = ["XAUUSD", "TSLA", "AAPL"];
-  const symbols = defaultWatchlist.map(s => `"${s}"`).join(',');
-  
-  let initialSignals: Signal[] = [];
-  try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/signals_cache?select=symbol,current_price,price_change_pct,signal_direction,hybrid_verdict&symbol=in.(${symbols})`,
-      {
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-        },
-        cache: 'no-store',
-      }
+export default function WatchlistPage() {
+  const [signals, setSignals] = useState<Signal[]>([]);
+  const [watchlist, setWatchlist] = useState<string[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Load watchlist from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('stocklens_watchlist');
+    if (saved) {
+      setWatchlist(JSON.parse(saved));
+    } else {
+      // Default watchlist
+      setWatchlist(["XAUUSD", "TSLA", "AAPL"]);
+    }
+  }, []);
+
+  // Save watchlist to localStorage
+  useEffect(() => {
+    if (watchlist.length > 0) {
+      localStorage.setItem('stocklens_watchlist', JSON.stringify(watchlist));
+    }
+  }, [watchlist]);
+
+  const fetchSignals = useCallback(async () => {
+    if (watchlist.length === 0) {
+      setSignals([]);
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      const symbols = watchlist.map(s => `"${s}"`).join(',');
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/signals_cache?select=symbol,current_price,price_change_pct,signal_direction,hybrid_verdict&symbol=in.(${symbols})`,
+        {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+          },
+        }
+      );
+      const data = await response.json();
+      setSignals(data || []);
+    } catch (err) {
+      console.error("[Watchlist] Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [watchlist]);
+
+  useEffect(() => {
+    fetchSignals();
+  }, [fetchSignals]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchSignals();
+    setRefreshing(false);
+  };
+
+  const removeFromWatchlist = (symbol: string) => {
+    const updated = watchlist.filter(s => s !== symbol);
+    setWatchlist(updated);
+    setSignals(signals.filter(s => s.symbol !== symbol));
+    localStorage.setItem('stocklens_watchlist', JSON.stringify(updated));
+  };
+
+  const getSignalBadge = (verdict: string, direction: string | null) => {
+    if (direction === "LONG") return "bg-buy text-white";
+    if (direction === "SHORT") return "bg-sell text-white";
+    
+    switch (verdict) {
+      case "STRONG_BUY":
+      case "BUY":
+        return "bg-buy-bg text-buy border border-buy/30";
+      case "STRONG_SELL":
+      case "SELL":
+        return "bg-sell-bg text-sell border border-sell/30";
+      default:
+        return "bg-card border border-border text-text-secondary";
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-2 border-accent border-t-transparent rounded-full"></div>
+        <span className="ml-3 text-text-secondary">Loading watchlist...</span>
+      </div>
     );
-    initialSignals = await response.json();
-  } catch (err) {
-    console.error("[Watchlist] Server fetch error:", err);
   }
 
   return (
-    <WatchlistClient 
-      user={{ email: user.email || '' }} 
-      initialSignals={initialSignals}
-      initialWatchlist={defaultWatchlist}
-    />
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Star className="h-6 w-6 text-yellow-500" />
+          <h1 className="text-2xl font-bold">My Watchlist</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 bg-card-hover hover:bg-border text-text-primary px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <Link 
+            href="/"
+            className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Add Asset
+          </Link>
+        </div>
+      </div>
+
+      {signals.length === 0 ? (
+        <div className="card text-center py-12">
+          <Star className="h-12 w-12 text-text-muted mx-auto mb-4" />
+          <p className="text-text-secondary mb-2">Your watchlist is empty</p>
+          <p className="text-text-muted text-sm mb-4">Go to the screener and click the star icon to add assets</p>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white px-6 py-2 rounded-lg font-medium transition-colors"
+          >
+            <TrendingUp className="h-4 w-4" />
+            Go to Screener
+          </Link>
+        </div>
+      ) : (
+        <div className="card overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="text-left text-text-secondary text-sm border-b border-border">
+                <th className="py-3 px-4">Asset</th>
+                <th className="py-3 px-4 text-right">Price</th>
+                <th className="py-3 px-4 text-right">24h Change</th>
+                <th className="py-3 px-4 text-center">Signal</th>
+                <th className="py-3 px-4"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {signals.map((item) => {
+                const priceChange = item.price_change_pct ?? 0;
+                return (
+                  <tr key={item.symbol} className="border-b border-border hover:bg-card-hover transition-colors">
+                    <td className="py-4 px-4">
+                      <Link href={`/stock/${item.symbol}`} className="flex items-center gap-3 hover:text-accent">
+                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                        <div>
+                          <p className="font-medium">{item.symbol}</p>
+                          <p className="text-xs text-text-muted">{ASSET_NAMES[item.symbol] || item.symbol}</p>
+                        </div>
+                      </Link>
+                    </td>
+                    <td className="py-4 px-4 font-mono text-right">
+                      ${item.current_price?.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: item.current_price && item.current_price < 10 ? 4 : 2
+                      }) ?? "N/A"}
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <span className={`flex items-center justify-end gap-1 ${priceChange >= 0 ? "text-buy" : "text-sell"}`}>
+                        {priceChange >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                        {priceChange >= 0 ? "+" : ""}{priceChange.toFixed(2)}%
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className={`${getSignalBadge(item.hybrid_verdict, item.signal_direction)} px-3 py-1 rounded-full text-xs font-semibold`}>
+                        {item.signal_direction === "LONG" ? "LONG" : 
+                         item.signal_direction === "SHORT" ? "SHORT" : 
+                         item.hybrid_verdict}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <button 
+                        onClick={() => removeFromWatchlist(item.symbol)}
+                        className="p-2 hover:bg-sell/10 rounded-lg text-text-muted hover:text-sell transition-colors"
+                        title="Remove from watchlist"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }

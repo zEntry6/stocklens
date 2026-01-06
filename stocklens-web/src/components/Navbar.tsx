@@ -1,94 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { Activity, Crown, LogIn, User, Menu, X } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-
-interface UserProfile {
-  is_premium: boolean;
-  email: string | null;
-}
+import { Activity, Menu, X, Star, TrendingUp } from "lucide-react";
 
 export default function Navbar() {
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const supabase = useMemo(() => createClient(), []);
-
-  useEffect(() => {
-    let mounted = true;
-
-    // Get current session
-    const getUser = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!mounted) return;
-        
-        setUser(user);
-
-        if (user) {
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("is_premium, email")
-            .eq("id", user.id)
-            .single() as { data: { is_premium: boolean; email: string } | null };
-          
-          if (mounted) setProfile(profileData);
-        }
-      } catch (e) {
-        console.error("Auth error:", e);
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    };
-
-    getUser();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event: any, session: any) => {
-        if (!mounted) return;
-        
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("is_premium, email")
-            .eq("id", session.user.id)
-            .single() as { data: { is_premium: boolean; email: string } | null };
-          if (mounted) setProfile(profileData);
-        } else {
-          setProfile(null);
-        }
-      }
-    );
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleLogin = () => {
-    // Redirect to login page instead of OAuth
-    window.location.href = "/login";
-  };
-
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-      setProfile(null);
-      // Force page reload to clear all state
-      window.location.href = "/";
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
-  };
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
@@ -104,181 +21,49 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-6">
             <Link 
               href="/" 
-              className="text-text-secondary hover:text-text-primary transition-colors"
+              className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
             >
+              <TrendingUp className="h-4 w-4" />
               Screener
             </Link>
             <Link 
               href="/watchlist" 
-              className="text-text-secondary hover:text-text-primary transition-colors"
+              className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
             >
+              <Star className="h-4 w-4" />
               Watchlist
             </Link>
-            
-            {/* Auth Section */}
-            {user ? (
-              <div className="flex items-center gap-4">
-                {profile?.is_premium ? (
-                  <span className="flex items-center gap-1 text-yellow-500 text-sm">
-                    <Crown className="h-4 w-4" />
-                    Premium
-                  </span>
-                ) : (
-                  <Link
-                    href="/pricing"
-                    className="bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
-                  >
-                    Upgrade to Premium
-                  </Link>
-                )}
-                <div className="relative group">
-                  <button className="flex items-center gap-2 text-text-secondary hover:text-text-primary">
-                    <User className="h-5 w-5" />
-                  </button>
-                  <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                    <div className="p-3 border-b border-border">
-                      <p className="text-sm text-text-primary truncate">
-                        {profile?.email || user.email}
-                      </p>
-                    </div>
-                    <Link
-                      href="/profile"
-                      className="block w-full text-left px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-card-hover transition-colors"
-                    >
-                      My Profile
-                    </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-card-hover transition-colors"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={handleLogin}
-                className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                <LogIn className="h-4 w-4" />
-                Sign In
-              </button>
-            )}
           </div>
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden text-text-secondary hover:text-text-primary"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 text-text-secondary hover:text-text-primary"
           >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-border">
-            <div className="flex flex-col gap-2">
-              {/* User Info (if logged in) */}
-              {user && (
-                <div className="px-3 py-3 mb-2 bg-background rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center">
-                      <User className="h-5 w-5 text-accent" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-text-primary truncate">
-                        {profile?.email || user.email}
-                      </p>
-                      {profile?.is_premium ? (
-                        <span className="flex items-center gap-1 text-yellow-500 text-xs">
-                          <Crown className="h-3 w-3" />
-                          Premium Member
-                        </span>
-                      ) : (
-                        <span className="text-xs text-text-muted">Free Account</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Navigation Links */}
+            <div className="flex flex-col gap-4">
               <Link 
                 href="/" 
-                className="px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-card-hover rounded-lg transition-colors"
+                className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
+                <TrendingUp className="h-4 w-4" />
                 Screener
               </Link>
               <Link 
                 href="/watchlist" 
-                className="px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-card-hover rounded-lg transition-colors"
+                className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
+                <Star className="h-4 w-4" />
                 Watchlist
               </Link>
-              
-              {user ? (
-                <>
-                  <Link
-                    href="/profile"
-                    className="px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-card-hover rounded-lg transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    My Profile
-                  </Link>
-                  <Link
-                    href="/pricing"
-                    className="px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-card-hover rounded-lg transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Pricing
-                  </Link>
-                  
-                  {/* Upgrade Button (if not premium) */}
-                  {!profile?.is_premium && (
-                    <Link
-                      href="/pricing"
-                      className="mt-2 bg-accent hover:bg-accent-hover text-white px-4 py-3 rounded-lg font-medium transition-colors text-center flex items-center justify-center gap-2"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <Crown className="h-4 w-4" />
-                      Upgrade to Premium
-                    </Link>
-                  )}
-                  
-                  <div className="border-t border-border mt-2 pt-2">
-                    <button
-                      onClick={() => {
-                        handleLogout();
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full px-3 py-2 text-left text-sell hover:bg-card-hover rounded-lg transition-colors"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="mt-2 space-y-2">
-                  <Link
-                    href="/login"
-                    className="block w-full text-center bg-accent hover:bg-accent-hover text-white px-4 py-3 rounded-lg font-medium transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Sign In
-                  </Link>
-                  <Link
-                    href="/register"
-                    className="block w-full text-center bg-card-hover hover:bg-border text-text-primary px-4 py-3 rounded-lg font-medium transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Create Account
-                  </Link>
-                </div>
-              )}
             </div>
           </div>
         )}
