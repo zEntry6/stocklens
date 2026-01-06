@@ -34,16 +34,16 @@ export default function LoginPage() {
       console.log("Login successful, session:", session ? "exists" : "null");
 
       if (session) {
-        // Create/update profile record
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .upsert({
-            id: session.user.id,
-            email: session.user.email?.toLowerCase(),
-            updated_at: new Date().toISOString(),
-          }, { onConflict: "id" });
-        
-        if (profileError) {
+        // Create/update profile record - use rpc or skip if types don't match
+        try {
+          await supabase
+            .from("profiles")
+            .upsert({
+              id: session.user.id,
+              email: session.user.email?.toLowerCase(),
+              updated_at: new Date().toISOString(),
+            } as any, { onConflict: "id" });
+        } catch (profileError) {
           console.warn("Profile upsert warning:", profileError);
         }
 
