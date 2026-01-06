@@ -7,8 +7,11 @@ STRICT RULE: Global Markets Only
 - ALLOWED: Forex, Commodities (XAU/XAG), US Stocks
 """
 import sys
+import os
 import time
 import signal
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from enum import Enum
@@ -20,6 +23,34 @@ from config import Config
 from database import db
 from analysis_tech import tech_analyzer, TechnicalSignal, TechnicalResult
 from analysis_news import news_analyzer, SentimentLabel, SentimentResult
+
+
+# Health check server for Railway
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    """Simple HTTP handler for health checks"""
+    
+    def do_GET(self):
+        if self.path == '/' or self.path == '/health':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            response = '{"status": "healthy", "service": "stocklens-engine"}'
+            self.wfile.write(response.encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def log_message(self, format, *args):
+        # Suppress HTTP logs
+        pass
+
+
+def start_health_server():
+    """Start a simple HTTP server for health checks"""
+    port = int(os.environ.get('PORT', 8080))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    logger.info(f"✓ Health check server running on port {port}")
+    server.serve_forever()
 
 
 # Configure logging
@@ -535,6 +566,12 @@ def main():
     if not Config.validate():
         logger.error("Configuration incomplete! Check your .env file.")
         sys.exit(1)
+    
+    # Start health check server in background thread (for Railway)
+    if args.mode == 'scheduled':
+        health_thread = threading.Thread(target=start_health_server, daemon=True)
+        health_thread.start()
+        logger.info("✓ Health check server started in background")
     
     # Run engine
     if args.mode == 'scheduled':
