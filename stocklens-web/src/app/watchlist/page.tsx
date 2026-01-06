@@ -3,12 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Star, Plus, Trash2, TrendingUp, TrendingDown, Lock, Loader2, RefreshCw } from "lucide-react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 const SUPABASE_URL = 'https://famxbhnsogvfeoxmqhmu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhbXhiaG5zb2d2ZmVveG1xaG11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1NTY1MTgsImV4cCI6MjA4MzEzMjUxOH0.xu41qUk6ApxAuMr6e_y77fyYTNtDYq0oH6fIklWaIng';
-
-const supabase = createClient();
 
 interface Signal {
   symbol: string;
@@ -28,6 +26,7 @@ const ASSET_NAMES: Record<string, string> = {
 };
 
 export default function WatchlistPage() {
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [signals, setSignals] = useState<Signal[]>([]);
@@ -53,17 +52,17 @@ export default function WatchlistPage() {
     }
   }, [watchlist]);
 
-  // Fetch data immediately, check auth in parallel
+  // Check auth via localStorage (instant), then fetch data
   useEffect(() => {
-    // Start fetching data immediately
+    const userEmail = localStorage.getItem('user_email');
+    if (!userEmail) {
+      router.push('/login');
+      return;
+    }
+    setUser({ email: userEmail });
+    setLoading(false);
     fetchSignals();
-    
-    // Check auth in parallel (non-blocking)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user || null);
-      setLoading(false);
-    });
-  }, [fetchSignals]);
+  }, [fetchSignals, router]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
